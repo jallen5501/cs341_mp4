@@ -1,0 +1,588 @@
+Script started on Thu Nov 17 14:16:55 2016
+warning: could not update utmp entry
+sh: using dumb terminal settings.
+blade57(1)% pwd
+/courses/cs341/f16/bobw/jmallen/mp4
+blade57(2)% ls -l
+total 246
+-rw-r--r--   1 jmallen     13162 Nov 16 17:10 Rubric.docx
+-rw-r--r--   1 jmallen     10647 Nov 17 14:13 cmds.c
+-rw-r--r--   1 jmallen     11223 Nov 17 14:06 cmds.opc
+-rw-r--r--   1 jmallen      1027 Nov 17 13:45 discussion.txt
+-rw-r--r--   1 jmallen      2649 Nov 14 13:37 makefile
+-rw-r--r--   1 jmallen     83033 Nov 14 13:37 mp3.pdf
+-rw-r--r--   1 jmallen      2374 Nov 16 17:13 slex.c
+-rw-r--r--   1 jmallen      1890 Nov 17 12:46 slex.h
+-rw-r--r--   1 jmallen      4439 Nov 16 21:52 slex.opc
+drwxrwsr-x   2 jmallen       512 Nov 14 13:37 soln
+lrwxrwxrwx   1 jmallen        10 Nov 17 14:06 syms -> tutor.syms
+-rw-r--r--   1 jmallen      1373 Nov 17 11:45 test_tickpack.c
+-rwxr-xr-x   1 jmallen     28757 Nov 17 11:56 test_tickpack.lnx
+-rw-r--r--   1 jmallen      4729 Nov 17 11:56 test_tickpack.opc
+-rw-r--r--   1 jmallen      2443 Nov 17 11:56 test_tickpack.syms
+-rw-r--r--   1 jmallen      3419 Nov 17 11:44 tickpack.c
+-rw-r--r--   1 jmallen       326 Nov 14 13:37 tickpack.h
+-rw-r--r--   1 jmallen      6059 Nov 17 11:56 tickpack.opc
+-rw-r--r--   1 jmallen      2040 Nov 14 13:37 tutor.c
+-rwxr-xr-x   1 jmallen     47209 Nov 17 14:06 tutor.lnx
+-rw-r--r--   1 jmallen      4645 Nov 17 13:01 tutor.opc
+-rw-r--r--   1 jmallen      3475 Nov 17 14:06 tutor.syms
+-rw-r--r--   1 jmallen      4096 Nov 17 14:11 typescript_tutor
+-rw-r--r--   1 jmallen         0 Nov 17 14:16 typescript_ulab
+blade57(3)% cat cmds.c
+/*ear::q:q******************************************************************
+*
+*   file:     cmds.c
+*   bob wilson: modified for mp3 on tutor VM 5/24/2016
+*   author:   betty o'neil
+*   date:     dim dark past
+*
+*/
+
+/* the Makefile arranges that #include <..> searches in the right
+   places for these headers-- */
+#include <stdio.h>
+#include <serial.h>
+#include <lp.h>
+#include "slex.h"
+#include "tickpack.h"
+
+/*#define DEBUGLPT1*/
+/*#define DEBUGCOM1*/
+
+unsigned char timeout=1;
+/*===================================================================*
+*
+*   Command table for tutor program - an array of structures of type cmd
+*   - for each command provide the token, the function to call when 
+*   that token is found, and the help message.
+*
+*   slex.h contains the typdef for struct cmd, and declares the 
+*   cmds array as extern to all the other parts of the program.
+*   Code in slex.c parses user input command line and calls the
+*   requested semantic action, passing a pointer to the cmd struct
+*   and any arguments the user may have entered.
+*
+*===================================================================*/
+
+PROTOTYPE int quit(Cmd *cp, char *arguments);
+PROTOTYPE int mem_display(Cmd *cp, char *arguments);
+PROTOTYPE int mem_set(Cmd *cp, char *arguments);
+PROTOTYPE int help(Cmd *cp, char *arguments);
+PROTOTYPE int test(Cmd *cp, char *arguments);
+PROTOTYPE int timeon ( Cmd *cp, char *arguments);
+PROTOTYPE int timeoff ( Cmd *cp, char *arguments);
+PROTOTYPE void tick_print(void);
+PROTOTYPE static void callback(void);
+/* command table */
+
+Cmd cmds[] = {  {"test", test, "test <LPT1> or test <COM1>"}, 
+             {"timeon", timeon, "Timer On: timeon <interval in secs>"},
+             {"timeoff", timeoff, "Timer Off: timeoff"},
+             {"md",  mem_display, "Memory display: md <addr>"},
+             {"ms", mem_set, "Memory set: ms <addr>"},
+             {"h", help, "Help: h <cmd> or h (for all)"},
+             {"q",  quit, "Quit" },
+             {NULL, NULL,  NULL}};   /* null cmd to flag end of table */
+
+static int timer_on;            /* flag for timer int on */
+static int ticks;               /* tick count to display */
+static int i;                   /* used in callback function */
+/*===================================================================*
+*               command                 routines
+*
+*   Each command routine is called with 2 args, the remaining
+*   part of the line to parse and a pointer to the struct cmd for this
+*   command. Each returns 0 for continue or 1 for all-done.
+*
+*===================================================================*/
+
+/*===================================================================
+*     timeon: timer interrupts every interval seconds and displays count
+*
+*====================================================================*/
+
+int test (Cmd *cp, char *arguments) {
+
+        char entry[50];
+        sscanf(arguments, "%s", entry);                         /* entry-> argument */
+
+        if (!strcmp(entry, "LPT1")) {
+
+                byte OGcontrol, OGportdata, portdata;
+                OGportdata=inpt(LPT1_BASE+LP_DATA);             /* saves original port data */
+                OGcontrol=inpt(LPT1_BASE+LP_CNTRL);             /* saves original control data */
+
+                printf("Normal Read/Write mode\n");
+                outpt(LPT1_BASE+LP_CNTRL, LP_PINITP);           /* no device is connected to LPT1 */            
+                outpt(LPT1_BASE+LP_DATA, 0xff);                 /* write ff to data register */ 
+                portdata=inpt(LPT1_BASE+LP_DATA);
+#ifdef DEBUGLPT1
+                printf("%c\n", portdata);                       /* should print test char */
+#endif
+                portdata==0xff ? printf("DATA: %x OK\n", portdata): printf("ERROR in LPT1\n");
+
+                outpt(LPT1_BASE+LP_DATA, 0x00);                 /* write 00 to data register */  
+                portdata=inpt(LPT1_BASE+LP_DATA);
+
+                portdata==0x00 ? printf("DATA: 00 OK\n\n\n") : printf("ERROR in LPT1\n");
+
+                printf("Set in Bi-directional mode now\n");
+                outpt(LPT1_BASE+LP_CNTRL, LP_PDIR);             /* enables bidirectional */
+
+                portdata=inpt(LPT1_BASE+LP_DATA);               /* reading from data port when bidirection is on */
+#ifdef DEBUGLPT1
+                printf("%x\n", portdata);                       /* should print "ff" */
+#endif
+                portdata==0xff ? printf("DATA: %x OK\n\n\n", portdata) : printf("ERROR in LPT1\n");
+
+                outpt(LPT1_BASE+LP_CNTRL, OGcontrol);           /* return to original control status */
+                outpt(LPT1_BASE+LP_DATA, OGportdata);           /* return original port data */
+        }       
+
+        else if (!strcmp(entry, "COM1")) {
+
+                byte OGmsr, OGmcr;                              /* used to save original values in register */
+                byte testmsrbefore, testmsrafter, testmsr, testmcr, testmsragain;
+
+                OGmsr=inpt(COM1_BASE+UART_MSR);                 /* original status of MSR register */
+                OGmcr=inpt(COM1_BASE+UART_MCR);                 /* original status of MCR register */ 
+
+                outpt(COM1_BASE+UART_MCR, 0x00);                /* ensures loopback mode is not on */
+                printf("Not in loopback\n");
+
+                testmsrbefore=inpt(COM1_BASE+UART_MSR);
+#ifdef DEBUGCOM1
+                printf("%x\n",testmsrbefore);
+                printf("%x\n",inpt(COM1_BASE+UART_MSR));
+#endif
+                printf("Write 0x0f to MCR\n");
+                outpt(COM1_BASE+UART_MCR, 0x0f);        /* write 0x0f to mcr */
+                testmsrbefore&=0xf0;                    /* only the first 4 bits are important for diagnostic, last 4 bits is hardware dependent */
+                testmsrafter=inpt(COM1_BASE+UART_MSR);  
+#ifdef DEBUGCOM1        
+                printf("%x\n",testmsrafter);
+#endif
+
+                testmsrbefore==testmsrafter ?  printf("MSR: %x OK\n\n\n",testmsrafter) : printf("ERROR in COM1\n\n\n");  
+
+                outpt(COM1_BASE+UART_MCR, 0x1f);        /* Turn on loopback mode */
+                printf("In loopback now.\n");
+
+                testmcr=inpt(COM1_BASE+UART_MCR);
+
+                testmcr==0x1f ? printf("MCR: %x OK\n",testmcr) : printf("ERROR\n");     
+
+#ifdef DEBUGCOM1
+                printf("%x\n", testmcr);
+                printf("%x\n", testmsr);
+#endif
+
+                testmsr=testmsragain=inpt(COM1_BASE+UART_MSR);
+                testmcr=inpt(COM1_BASE+UART_MCR);
+#ifdef DEBUGCOM1
+                printf("%x %x\n",testmcr, testmsr); 
+#endif
+                testmcr&=0x0f;
+                testmsr=testmsr>>4;
+
+                testmcr==testmsr ? printf("MSR: %x OK\n",testmsragain) : printf("ERROR\n");
+
+                testmsr=inpt(COM1_BASE+UART_MSR);
+#ifdef DEBUGCOM1
+                printf("%x\n",testmsr);
+#endif 
+
+                testmsr==0xf0 ? printf("MSR: %x OK\n",testmsr) : printf("ERROR\n");
+
+
+                outpt(COM1_BASE+UART_MCR, UART_MCR_LOOP);       /* Turn on loopback mode with a slightly different byte */
+                                                                /* nearly the same behavior should be observed */
+                inpt(COM1_BASE+UART_MCR)==UART_MCR_LOOP ? printf("MCR: 10 OK\n") : printf("ERROR\n");
+
+                testmsr=testmsragain=inpt(COM1_BASE+UART_MSR);
+                testmcr=inpt(COM1_BASE+UART_MCR);
+#ifdef DEBUGCOM1
+                printf("%x %x\n",testmcr, testmsr); 
+#endif 
+                testmcr&=0x0f;
+                testmsr=testmsr>>4;
+
+                testmcr==testmsr ? printf("MSR: 0f OK\n") : printf("ERROR\n");
+
+                testmsr=inpt(COM1_BASE+UART_MSR);
+#ifdef DEBUGCOM1
+                printf("%x\n",testmsr); 
+#endif
+                testmsr==0x00 ? printf("MSR: 00 OK\n") : printf("ERROR\n");
+
+                while (timeout && !set_timer(&callback, 5, 5)) {  
+                        outpt(COM1_BASE+UART_MSR, 0xaa);        /* if COM1 is not working correctly, could get stuck in loop */
+                        printf("Loop Test Data Passes.\n");
+                        break;
+                 }
+                printf("Not in loopback now.\n");
+
+                outpt(COM1_BASE+UART_MSR, OGmsr);               /* restore original msr register status */
+                outpt(COM1_BASE+UART_MCR, OGmcr);               /* restore original mcr register status */
+        }       
+        else    printf("bad input\n");
+        return 0;
+}
+
+
+static void callback() {
+        if (++i==5) {   
+                timeout=0;
+                printf("TIMEOUT\n");    
+        }
+} 
+
+
+int timeon (Cmd *cp, char *arguments)
+{
+  unsigned int interval;
+
+  if ((sscanf(arguments, "%d", &interval))!=1) {
+    printf ("Proper usage : %s\n", cp->help);
+    return 0; 
+  }
+
+  if(timer_on) {
+    printf("%s", "timer already on\n");
+    return 0;
+  }
+  set_timer(&tick_print, interval, interval);   /* continuous */
+  timer_on = 1;
+  ticks = 0;
+  printf("%s", "timer on\n");
+  return 0;
+}
+
+void tick_print(void)
+{
+  ticks++;
+  printf("(%d)\n", ticks);
+}
+
+/*=====================================================================
+*
+*     timeoff: shut down timer and stop printing of count
+*
+*======================================================================*/
+
+int timeoff (Cmd *cp, char *arguments)
+{
+  stop_timer(&tick_print);
+  timer_on = 0;
+  ticks = 0;
+  printf("%s", "timer off\n");
+  return 0;
+}
+
+
+/*===================================================================*
+*               command                 routines                     
+*
+*   Each command routine is called with 2 args, the remaining 
+*   part of the line to parse and a pointer to the struct cmd for this 
+*   command. Each returns 0 for continue or 1 for all-done.  
+*
+*===================================================================*/
+
+int quit(Cmd *cp, char *arguments)
+{
+  if (timer_on) {
+     shutdown_ticks();
+     timer_on = 0;
+  }
+  return 1;                     /* all done flag */
+}
+
+/*===================================================================*
+*
+*   mem_display: display contents of a single byte in hex
+*
+*/
+
+int mem_display(Cmd *cp, char *arguments)
+{
+  unsigned int address, i;
+
+  if (sscanf(arguments, "%x", &address) == 1) {
+    /* print the address in hex */
+    printf("%08x    ", address);
+    /* print 16 locations as two hex digits per memory byte */ 
+    for (i = 0; i < 16; i++)
+      printf("%02x ", *(unsigned char *)(address + i));
+    /* print 16 locations as one ascii coded character per byte */
+    for (i = 0; i < 16; i++)
+      printf("%c",
+      (*(unsigned char *)(address + i) >= ' ' &&
+       *(unsigned char *)(address + i) <= '~') ?
+       *(unsigned char *)(address + i) : '.');
+    /* and print end of line */
+    printf("\n");
+  } else
+    printf("        help message: %s\n", cp->help);
+
+  return 0;                   /* not done */
+}
+
+/********************************************************/
+
+/* mem_set : ms <hexaddress> <new_val> 
+ *     stores byte new_val at address, both are given 
+ *     in 'arguments'
+*/
+
+int mem_set(Cmd *cp, char *arguments) 
+{
+  unsigned int address, value;
+
+  if (sscanf(arguments, "%x %x", &address, &value) == 2) {
+    if(value < 0x100)
+       *(unsigned char *)address = value;
+    else
+       *(unsigned int *)address = value;
+
+    printf("OK\n");
+  } else
+    printf("        help message: %s\n", cp->help);
+
+  return 0;
+}
+
+/****************************************************/
+
+/* help : display a help message of the 'arguments'
+ *      command, or list all commands if no arg.
+*/
+
+int help(Cmd *cp, char *arguments) 
+{
+  int stat, cmd_num, pos;
+
+  /* reuse code that matches command token-- */
+  stat = slex(arguments, cmds, &cmd_num, &pos);
+  if (stat < 0) {               /* if no command token found in args */
+    printf("     cmd    help message\n");
+    printf("     ---    ------------\n");
+    for (cp = cmds; cp->cmdtoken; cp++)   /* show all commands */
+      printf("%8s    %s\n",cp->cmdtoken, cp->help);
+  } else {                      /* found command token, just print that one */
+    printf("%s\n", cmds[cmd_num].help);
+    return 0;
+  }
+  return 0;
+}
+blade57(4)% make cleab = n
+rm -f *.o *.opc *.syms *.usyms *.lnx tutor core syms usyms
+blade57(5)% make tutor.c  lnx
+/groups/ulab/bin/i386-gcc -g -Wall -Wstrict-prototypes -Wmissing-prototypes -Wno-uninitialized -Wshadow -ansi -D__USE_FIXED_PROTOTYPES__  -I/groups/ulab/pcdev/include -c -o cmds.opc cmds.c
+cmds.c: In function `mem_display':
+cmds.c:278: warning: declaration of `i' shadows global declaration
+/groups/ulab/bin/i386-gcc -g -Wall -Wstrict-prototypes -Wmissing-prototypes -Wno-uninitialized -Wshadow -ansi -D__USE_FIXED_PROTOTYPES__  -I/groups/ulab/pcdev/include -c -o tutor.opc tutor.c
+/groups/ulab/bin/i386-gcc -g -Wall -Wstrict-prototypes -Wmissing-prototypes -Wno-uninitialized -Wshadow -ansi -D__USE_FIXED_PROTOTYPES__  -I/groups/ulab/pcdev/include -c -o slex.opc slex.c
+/groups/ulab/bin/i386-gcc -g -Wall -Wstrict-prototypes -Wmissing-prototypes -Wno-uninitialized -Wshadow -ansi -D__USE_FIXED_PROTOTYPES__  -I/groups/ulab/pcdev/include -c -o tickpack.opc tickpack.c
+/groups/ulab/bin/i386-ld -N -Ttext 1000e0 -o tutor.lnx \
+        /groups/ulab/pcdev/lib/startup0.opc /groups/ulab/pcdev/lib/startup.opc \
+        tutor.opc slex.opc tickpack.opc cmds.opc /groups/ulab/pcdev/lib/libc.a
+rm -f syms;/groups/ulab/bin/i386-nm -n tutor.lnx>tutor.syms;ln -s tutor.syms syms
+blade57(6)% cat typescript_tutor 
+Script started on Thu 17 Nov 2016 02:09:11 PM EST
+tuser@tutor-vserver:~$ mtip -f tt[Kutor.lnx
+For command help, type ~?
+For help on args, rerun without args
+Code starts at 0x100100
+Using board # 1 
+~downloading tutor.lnx
+
+............Done.
+
+Download done, setting EIP to 100100.
+Tutor> test a
+No such command: test a, use h command for help
+Tutor> go 100100
+    cmd     help message
+    test    test <LPT1> or test <COM1>
+  timeon    Timer On: timeon <interval in secs>
+ timeoff    Timer Off: timeoff
+      md    Memory display: md <addr>
+      ms    Memory set: ms <addr>
+       h    Help: h <cmd> or h (for all)
+       q    Quit
+PC-tutor> test a
+bad input
+PC-tutor> test b
+bad input
+PC-tutor> test LPT1
+Normal Read/Write mode
+DATA: ff OK
+DATA: 00 OK
+
+
+Set in Bi-directional mode now
+DATA: ff OK
+
+
+PC-tutor> test COM1
+Not in loopback
+Write 0x0f to MCR
+MSR: b0 OK
+
+
+In loopback now.
+MCR: 1f OK
+MSR: f4 OK
+MSR: f0 OK
+MCR: 10 OK
+MSR: 0f OK
+MSR: 00 OK
+Loop Test Data Passes.
+Not in loopback now.
+PC-tutor> ~downloading tutor.lnx
+^C
+Quit handler: 
+killing process 1951 Leaving board #1
+tuser@tutor-vserver:~$ exit
+exit
+
+Script done on Thu 17 Nov 2016 02:10:30 PM EST
+MCR: 10 OK
+MSR: 0f OK
+MSR: 00 OK
+Loop Test Data Passes.
+Not in loopback now.
+PC-tutor> Exception 3 at EIP=0010146c: Breakpoint
+Tutor> 
+Quit handler: 
+killing process 1922 Leaving board #1
+tuser@tutor-vserver:~$ mtip -f tutor.lnxpr.lnxor.lnx scp jmallen@users.cs.umb.edu:cs341/mp4/*.lnx .
+jmallen@users.cs.umb.edu's password: 
+Permission denied, please try again.
+jmallen@users.cs.umb.edu's password: 
+test_tickpack.lnx                               0%    0     0.0KB/s   --:-- ETAtest_tickpack.lnx                             100%   28KB  28.1KB/s   00:00    
+tutor.lnx                                       0%    0     0.0KB/s   --:-- ETAtutor.lnx                                     100%   46KB  46.1KB/s   00:00    
+tuser@tutor-vserver:~$ mtip -f tutr[Kor.lnx
+For command help, type ~?
+For help on args, rerun without args
+Code starts at 0x100100
+Using board # 1 
+~downloading tutor.lnx
+
+............Done.
+
+Download done, setting EIP to 100100.
+Tutor> go 100100
+    cmd     help message
+    test    test <LPT1> or test <COM1>
+  timeon    Timer On: timeon <interval in secs>
+ timeoff    Timer Off: timeoff
+      md    Memory display: md <addr>
+      ms    Memory set: ms <addr>
+       h    Help: h <cmd> or h (for all)
+       q    Quit
+PC-tutor> test COM1
+Not in loopback
+Write 0x0f to MCR
+MSR: b0 OK
+
+
+In loopback now.
+MCR: 1f OK
+MSR: f4 OK
+MSR: f0 OK
+MCR: 10 OK
+MSR: 0f OK
+MSR: 00 OK
+Loop Test Data Passes.
+Not in loopback now.
+PC-tutor> test LPT1
+Normal Read/Write mode
+DATA: ff OK
+DATA: 00 OK
+
+
+Set in Bi-directional mode now
+DATA: ff OK
+
+
+PC-tutor> Exception 3 at EIP=00101478: Breakpoint
+Tutor> 
+Quit handler: 
+killing process 1934 Leaving board #1
+tuser@tutor-vserver:~$ script
+Script started, file is typescript
+tuser@tutor-vserver:~$ mtip -f tt[Kutor.lnx
+For command help, type ~?
+For help on args, rerun without args
+Code starts at 0x100100
+Using board # 1 
+~downloading tutor.lnx
+
+............Done.
+
+Download done, setting EIP to 100100.
+Tutor> test a
+No such command: test a, use h command for help
+Tutor> go 100100
+    cmd     help message
+    test    test <LPT1> or test <COM1>
+  timeon    Timer On: timeon <interval in secs>
+ timeoff    Timer Off: timeoff
+      md    Memory display: md <addr>
+      ms    Memory set: ms <addr>
+       h    Help: h <cmd> or h (for all)
+       q    Quit
+PC-tutor> test a
+bad input
+PC-tutor> test b
+bad input
+PC-tutor> test LPT1
+Normal Read/Write mode
+DATA: ff OK
+DATA: 00 OK
+
+
+Set in Bi-directional mode now
+DATA: ff OK
+
+
+PC-tutor> test COM1
+Not in loopback
+Write 0x0f to MCR
+MSR: b0 OK
+
+
+In loopback now.
+MCR: 1f OK
+MSR: f4 OK
+MSR: f0 OK
+MCR: 10 OK
+MSR: 0f OK
+MSR: 00 OK
+Loop Test Data Passes.
+Not in loopback now.
+PC-tutor> ~downloading tutor.lnx
+^C
+Quit hblade57(7)% cat discussion.txt 
+In this project, I took advantage of directives that the compiler reads.
+It was helpful because I i could quickly change which of my debugging statements I would want to compile in any test run.
+
+I learned more about how the assembly function, in and out work. When I was trying to save the original data and control registers for LPT1, first I tried
+
+byte x=*(byte *)(LPT1_BASE+LP_DATA);
+and noticed that it gave me a different then using:
+byte x=inpt(LPT1_BASE+LP_DATA); 
+
+I observed this phenomenon and learned that when the in function is being called, it is returning a value in a register on the LPT1 port. The way I first tried was incorrect because I was saving a random byte in tutor memory.
+
+For debugging, my code documents how I went about it.
+
+
+The difficult part about the diagnostics for COM1 was understanding the sample display output. Once I learned what is actually happenening in loopback mode, it was not too hard to executue. Learning which part of the smaple output was hardware dependent was tough. 
+
+ 
+blade57(8)% exit
+script done on Thu Nov 17 14:18:57 2016

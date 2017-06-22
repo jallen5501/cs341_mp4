@@ -1,0 +1,17 @@
+In this project, I took advantage of directives that the compiler reads.
+It was helpful because I i could quickly change which of my debugging statements I would want to compile in any test run.
+
+I learned more about how the assembly function, in and out work. When I was trying to save the original data and control registers for LPT1, first I tried
+
+byte x=*(byte *)(LPT1_BASE+LP_DATA);
+and noticed that it gave me a different then using:
+byte x=inpt(LPT1_BASE+LP_DATA); 
+
+I observed this phenomenon and learned that when the in function is being called, it is returning a value in a register on the LPT1 port. The way I first tried was incorrect because I was saving a random byte in tutor memory.
+
+For debugging, my code documents how I went about it.
+
+
+The difficult part about the diagnostics for COM1 was understanding the sample display output. Once I learned what is actually happenening in loopback mode, it was not too hard to executue. Learning which part of the smaple output was hardware dependent was tough. 
+
+ 

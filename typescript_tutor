@@ -1,0 +1,177 @@
+Script started on Thu 17 Nov 2016 02:09:11 PM EST
+tuser@tutor-vserver:~$ mtip -f tt[Kutor.lnx
+For command help, type ~?
+For help on args, rerun without args
+Code starts at 0x100100
+Using board # 1 
+~downloading tutor.lnx
+
+............Done.
+
+Download done, setting EIP to 100100.
+Tutor> test a
+No such command: test a, use h command for help
+Tutor> go 100100
+    cmd     help message
+    test    test <LPT1> or test <COM1>
+  timeon    Timer On: timeon <interval in secs>
+ timeoff    Timer Off: timeoff
+      md    Memory display: md <addr>
+      ms    Memory set: ms <addr>
+       h    Help: h <cmd> or h (for all)
+       q    Quit
+PC-tutor> test a
+bad input
+PC-tutor> test b
+bad input
+PC-tutor> test LPT1
+Normal Read/Write mode
+DATA: ff OK
+DATA: 00 OK
+
+
+Set in Bi-directional mode now
+DATA: ff OK
+
+
+PC-tutor> test COM1
+Not in loopback
+Write 0x0f to MCR
+MSR: b0 OK
+
+
+In loopback now.
+MCR: 1f OK
+MSR: f4 OK
+MSR: f0 OK
+MCR: 10 OK
+MSR: 0f OK
+MSR: 00 OK
+Loop Test Data Passes.
+Not in loopback now.
+PC-tutor> ~downloading tutor.lnx
+^C
+Quit handler: 
+killing process 1951 Leaving board #1
+tuser@tutor-vserver:~$ exit
+exit
+
+Script done on Thu 17 Nov 2016 02:10:30 PM EST
+MCR: 10 OK
+MSR: 0f OK
+MSR: 00 OK
+Loop Test Data Passes.
+Not in loopback now.
+PC-tutor> Exception 3 at EIP=0010146c: Breakpoint
+Tutor> 
+Quit handler: 
+killing process 1922 Leaving board #1
+tuser@tutor-vserver:~$ mtip -f tutor.lnxpr.lnxor.lnx scp jmallen@users.cs.umb.edu:cs341/mp4/*.lnx .
+jmallen@users.cs.umb.edu's password: 
+Permission denied, please try again.
+jmallen@users.cs.umb.edu's password: 
+test_tickpack.lnx                               0%    0     0.0KB/s   --:-- ETAtest_tickpack.lnx                             100%   28KB  28.1KB/s   00:00    
+tutor.lnx                                       0%    0     0.0KB/s   --:-- ETAtutor.lnx                                     100%   46KB  46.1KB/s   00:00    
+tuser@tutor-vserver:~$ mtip -f tutr[Kor.lnx
+For command help, type ~?
+For help on args, rerun without args
+Code starts at 0x100100
+Using board # 1 
+~downloading tutor.lnx
+
+............Done.
+
+Download done, setting EIP to 100100.
+Tutor> go 100100
+    cmd     help message
+    test    test <LPT1> or test <COM1>
+  timeon    Timer On: timeon <interval in secs>
+ timeoff    Timer Off: timeoff
+      md    Memory display: md <addr>
+      ms    Memory set: ms <addr>
+       h    Help: h <cmd> or h (for all)
+       q    Quit
+PC-tutor> test COM1
+Not in loopback
+Write 0x0f to MCR
+MSR: b0 OK
+
+
+In loopback now.
+MCR: 1f OK
+MSR: f4 OK
+MSR: f0 OK
+MCR: 10 OK
+MSR: 0f OK
+MSR: 00 OK
+Loop Test Data Passes.
+Not in loopback now.
+PC-tutor> test LPT1
+Normal Read/Write mode
+DATA: ff OK
+DATA: 00 OK
+
+
+Set in Bi-directional mode now
+DATA: ff OK
+
+
+PC-tutor> Exception 3 at EIP=00101478: Breakpoint
+Tutor> 
+Quit handler: 
+killing process 1934 Leaving board #1
+tuser@tutor-vserver:~$ script
+Script started, file is typescript
+tuser@tutor-vserver:~$ mtip -f tt[Kutor.lnx
+For command help, type ~?
+For help on args, rerun without args
+Code starts at 0x100100
+Using board # 1 
+~downloading tutor.lnx
+
+............Done.
+
+Download done, setting EIP to 100100.
+Tutor> test a
+No such command: test a, use h command for help
+Tutor> go 100100
+    cmd     help message
+    test    test <LPT1> or test <COM1>
+  timeon    Timer On: timeon <interval in secs>
+ timeoff    Timer Off: timeoff
+      md    Memory display: md <addr>
+      ms    Memory set: ms <addr>
+       h    Help: h <cmd> or h (for all)
+       q    Quit
+PC-tutor> test a
+bad input
+PC-tutor> test b
+bad input
+PC-tutor> test LPT1
+Normal Read/Write mode
+DATA: ff OK
+DATA: 00 OK
+
+
+Set in Bi-directional mode now
+DATA: ff OK
+
+
+PC-tutor> test COM1
+Not in loopback
+Write 0x0f to MCR
+MSR: b0 OK
+
+
+In loopback now.
+MCR: 1f OK
+MSR: f4 OK
+MSR: f0 OK
+MCR: 10 OK
+MSR: 0f OK
+MSR: 00 OK
+Loop Test Data Passes.
+Not in loopback now.
+PC-tutor> ~downloading tutor.lnx
+^C
+Quit h
